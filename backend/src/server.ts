@@ -12,11 +12,46 @@ import categoryRoutes from './routes/categoryRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import { verifyEmailTransporter } from './services/emailService';
 
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/civicpulse';
+const rawMongoUri = process.env.MONGO_URI || process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/civicpulse';
+const MONGO_URI = rawMongoUri.trim();
+
+// Database connection helper with connection caching
+let connectingPromise: Promise<typeof mongoose | null> | null = null;
+
+export async function connectDB(): Promise<typeof mongoose | null> {
+  if (mongoose.connection.readyState === 1) {
+    return mongoose;
+  }
+  if (connectingPromise) {
+    return connectingPromise;
+  }
+  connectingPromise = mongoose
+    .connect(MONGO_URI, { dbName: 'civicpulse' })
+    .then((m) => {
+      console.log('[CivicPulse] MongoDB Atlas connected successfully');
+      return m;
+    })
+    .catch((err: any) => {
+      console.error(`[CivicPulse] MongoDB connection failed: ${err.message || 'Unknown error'}`);
+      connectingPromise = null;
+      return null;
+    });
+
+  return connectingPromise;
+}
+
+// Database auto-connection middleware for serverless invocations
+app.use(async (_req, _res, next) => {
+  if (mongoose.connection.readyState !== 1) {
+    await connectDB();
+  }
+  next();
+});
 
 // Middleware
 app.use(cors({ origin: true, credentials: true }));
@@ -46,15 +81,14 @@ app.get('/api/health', (_req, res) => {
   res.json({
     status: 'ok',
     service: 'CivicPulse API',
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
     timestamp: new Date().toISOString(),
   });
 });
 
-// Database connection & server listen
-mongoose
-  .connect(MONGODB_URI)
-  .then(() => {
-    console.log(`[CivicPulse] MongoDB connected successfully to ${MONGODB_URI}`);
+// Start listening when running standalone (not serverless)
+if (!process.env.VERCEL) {
+  connectDB().then(() => {
     app.listen(PORT, () => {
       console.log(`[CivicPulse] Express Server running on http://localhost:${PORT}`);
       verifyEmailTransporter().then((res) => {
@@ -65,13 +99,8 @@ mongoose
         }
       });
     });
-  })
-  .catch((err) => {
-    console.error('[CivicPulse] MongoDB connection error:', err);
-    // Start server anyway so API endpoints can present friendly DB error or run in demo mode
-    app.listen(PORT, () => {
-      console.log(`[CivicPulse] Express Server running on http://localhost:${PORT} (Database pending)`);
-    });
   });
+}
 
 export default app;
+

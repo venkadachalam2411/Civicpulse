@@ -240,11 +240,30 @@ export default function IssueDetailsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Interactive Map Location */}
         <div className="glass-panel p-6 rounded-3xl border border-slate-800 space-y-4">
-          <h3 className="text-base font-bold text-white flex items-center gap-2">
-            <MapPin className="w-5 h-5 text-sky-400" />
-            Issue Map Location
-          </h3>
-          <MapView issues={[issue]} height="380px" center={[issue.latitude, issue.longitude]} zoom={15} />
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-sky-400" />
+              Incident Satellite Location
+            </h3>
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${issue.latitude},${issue.longitude}`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-sky-400 hover:text-sky-300 font-semibold flex items-center gap-1 bg-sky-950/60 px-2.5 py-1 rounded-xl border border-sky-800/60 transition-colors"
+            >
+              Open in Maps ↗
+            </a>
+          </div>
+          <MapView
+            issues={[issue]}
+            height="380px"
+            center={[issue.latitude, issue.longitude]}
+            zoom={16}
+            defaultLayer="satellite"
+            showLayerToggle={true}
+            showLocateButton={true}
+            showCoordsHUD={true}
+          />
         </div>
 
         {/* Timeline Audit Trail */}

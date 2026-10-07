@@ -1,6 +1,6 @@
 import React from 'react';
 import './globals.css';
-import 'leaflet/dist/leaflet.css';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import { AuthProvider } from '../context/AuthContext';
 import { ToastProvider } from '../context/ToastContext';
 import { Navbar } from '../components/Navbar';

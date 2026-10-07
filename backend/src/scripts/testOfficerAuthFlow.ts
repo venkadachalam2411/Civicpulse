@@ -11,7 +11,7 @@ import Issue from '../models/Issue';
 import IssueTimeline from '../models/IssueTimeline';
 import { generateNextEmployeeId, generateOfficialEmail, generateTempPassword } from '../services/officerService';
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/civicpulse';
+const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/civicpulse';
 const JWT_SECRET = process.env.JWT_SECRET || 'civicpulse_secret_key_2026';
 
 async function runAuthFlowTests() {
@@ -20,8 +20,8 @@ async function runAuthFlowTests() {
   console.log('================================================================\n');
 
   try {
-    await mongoose.connect(MONGODB_URI);
-    console.log('[OK] Connected to MongoDB database successfully.\n');
+    await mongoose.connect(MONGO_URI, { dbName: 'civicpulse' });
+    console.log('[OK] MongoDB connected successfully.\n');
 
     // -------------------------------------------------------------
     // TEST 1: Citizen Registration

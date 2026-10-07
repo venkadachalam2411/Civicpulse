@@ -32,10 +32,10 @@ export default function ReportIssuePage() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Roads');
   const [severity, setSeverity] = useState('medium');
-  const [location, setLocation] = useState('Chennai Central, Sector 2');
-  const [latitude, setLatitude] = useState(13.0827);
-  const [longitude, setLongitude] = useState(80.2707);
-  const [mapZoom, setMapZoom] = useState(13);
+  const [location, setLocation] = useState('Central Tamil Nadu (Select or Click Map)');
+  const [latitude, setLatitude] = useState(11.1271);
+  const [longitude, setLongitude] = useState(78.6569);
+  const [mapZoom, setMapZoom] = useState(7);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
@@ -179,23 +179,40 @@ export default function ReportIssuePage() {
         setLatitude(lat);
         setLongitude(lng);
         setAccuracy(Math.round(acc));
-        setMapZoom(16);
+        setMapZoom(18); // High zoom for satellite detail
         setIsLocating(false);
-        toast.success(`Exact GPS location locked! (±${Math.round(acc)}m accuracy)`);
+        toast.success(`Exact GPS locked! (±${Math.round(acc)}m precision)`);
         reverseGeocode(lat, lng);
       },
       (err) => {
-        setIsLocating(false);
-        let errorText = 'Unable to retrieve exact location.';
-        if (err.code === err.PERMISSION_DENIED) {
-          errorText = 'Location permission was denied. Please allow location access in your browser or select on the map.';
-        } else if (err.code === err.POSITION_UNAVAILABLE) {
-          errorText = 'GPS signal unavailable. Please pinpoint your location directly on the map.';
-        } else if (err.code === err.TIMEOUT) {
-          errorText = 'Location request timed out. Please retry or click on the map.';
-        }
-        setLocationError(errorText);
-        toast.error(errorText);
+        console.warn('High-accuracy geolocation failed, trying fallback...', err);
+        // Fallback with standard accuracy
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const { latitude: lat, longitude: lng, accuracy: acc } = pos.coords;
+            setLatitude(lat);
+            setLongitude(lng);
+            setAccuracy(Math.round(acc));
+            setMapZoom(17);
+            setIsLocating(false);
+            toast.success(`Current location locked (±${Math.round(acc)}m)`);
+            reverseGeocode(lat, lng);
+          },
+          (fallbackErr) => {
+            setIsLocating(false);
+            let errorText = 'Unable to retrieve exact GPS location.';
+            if (fallbackErr.code === fallbackErr.PERMISSION_DENIED) {
+              errorText = 'Location permission was denied. Please allow location access in your browser settings or click directly on the satellite map.';
+            } else if (fallbackErr.code === fallbackErr.POSITION_UNAVAILABLE) {
+              errorText = 'GPS signal unavailable. Please pinpoint your location directly on the satellite map.';
+            } else if (fallbackErr.code === fallbackErr.TIMEOUT) {
+              errorText = 'Location request timed out. Please retry or click on the satellite map.';
+            }
+            setLocationError(errorText);
+            toast.error(errorText);
+          },
+          { enableHighAccuracy: false, timeout: 20000, maximumAge: 60000 }
+        );
       },
       geoOptions
     );
@@ -224,11 +241,11 @@ export default function ReportIssuePage() {
           const foundLng = parseFloat(results[0].lon);
           setLatitude(foundLat);
           setLongitude(foundLng);
-          setMapZoom(16);
+          setMapZoom(18);
           setAccuracy(null);
-          toast.success('Location found on map!');
+          toast.success('Location found on satellite map!');
         } else {
-          toast.error('Could not pinpoint that exact address. Try moving the map pin directly.');
+          toast.error('Could not pinpoint that exact address. Try moving the pin directly on the satellite map.');
         }
       }
     } catch (err) {
@@ -240,10 +257,12 @@ export default function ReportIssuePage() {
   };
 
   // Interactive Map Pin / Drag selection
-  const handleMapLocationSelect = (lat: number, lng: number) => {
+  const handleMapLocationSelect = (lat: number, lng: number, acc?: number) => {
     setLatitude(lat);
     setLongitude(lng);
-    setAccuracy(null);
+    if (acc) {
+      setAccuracy(acc);
+    }
     reverseGeocode(lat, lng);
   };
 
@@ -556,12 +575,16 @@ export default function ReportIssuePage() {
 
             <MapView
               issues={[]}
-              height="300px"
+              height="360px"
               center={[latitude, longitude]}
               zoom={mapZoom}
               interactiveSelect={true}
               selectedPosition={[latitude, longitude]}
               onLocationSelect={handleMapLocationSelect}
+              defaultLayer="satellite"
+              showLayerToggle={true}
+              showLocateButton={true}
+              showCoordsHUD={true}
             />
           </div>
         </div>
