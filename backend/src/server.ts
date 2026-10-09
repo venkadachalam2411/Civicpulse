@@ -89,10 +89,11 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/notifications', notificationRoutes);
 
 // Root & Health check endpoints
-app.get('/', (_req, res) => {
+app.get(['/', '/api'], (_req, res) => {
   res.json({
     message: 'CivicPulse API is running successfully',
     status: 'OK',
+    timestamp: new Date().toISOString(),
   });
 });
 
