@@ -11,6 +11,7 @@ import adminRoutes from './routes/adminRoutes';
 import categoryRoutes from './routes/categoryRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import { verifyEmailTransporter } from './services/emailService';
+import multer from 'multer';
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 dotenv.config();
@@ -104,6 +105,24 @@ app.get('/api/health', (_req, res) => {
     database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
     timestamp: new Date().toISOString(),
   });
+});
+
+// Global error handler (handles Multer errors and serverless exceptions gracefully)
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error('[CivicPulse Error Handler]:', err);
+  if (err instanceof multer.MulterError) {
+    return res.status(400).json({
+      success: false,
+      message: `Upload error: ${err.message}`,
+      code: err.code,
+    });
+  }
+  if (err) {
+    return res.status(err.status || 500).json({
+      success: false,
+      message: err.message || 'Internal server error occurred.',
+    });
+  }
 });
 
 // Start listening when running standalone (not serverless)
