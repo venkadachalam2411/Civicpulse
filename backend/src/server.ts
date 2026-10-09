@@ -45,18 +45,37 @@ export async function connectDB(): Promise<typeof mongoose | null> {
   return connectingPromise;
 }
 
-// Database auto-connection middleware for serverless invocations
-app.use(async (_req, _res, next) => {
+// 1. CORS Middleware MUST run first before all other middleware
+app.use(
+  cors({
+    origin: true, // Reflect request origin to allow all domains (Vercel previews & production)
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  })
+);
+
+// Handle preflight OPTIONS requests immediately
+app.options('*', cors());
+
+// 2. Standard Body Parsers
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// 3. Database auto-connection middleware for serverless invocations (skips OPTIONS requests)
+app.use(async (req, _res, next) => {
+  if (req.method === 'OPTIONS') {
+    return next();
+  }
   if (mongoose.connection.readyState !== 1) {
-    await connectDB();
+    try {
+      await connectDB();
+    } catch (dbErr) {
+      console.error('[CivicPulse] DB auto-connect error:', dbErr);
+    }
   }
   next();
 });
-
-// Middleware
-app.use(cors({ origin: true, credentials: true }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
 // Serve static uploads
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
